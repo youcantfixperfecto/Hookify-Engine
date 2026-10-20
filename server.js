@@ -145,6 +145,13 @@ const HOOK_ANALYSIS_SCHEMA = {
   ]
 };
 
+// Candidate models in order of priority
+const CANDIDATE_MODELS = [
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-2.5-flash-lite'
+];
+
 app.post('/api/analyze', async (req, res) => {
   const { hook, product, audience, objective } = req.body;
 
@@ -185,55 +192,54 @@ Product/Niche: "${product ? product.trim() : 'Not specified'}"
 Target Audience: "${audience ? audience.trim() : 'Not specified'}"
 Target Objective: "${objective || 'attention'}"`;
 
-  try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const apiPayload = {
+    contents: [{ role: "user", parts: [{ text: `${systemPrompt}\n\n${userContent}` }] }],
+    generationConfig: {
+      responseMimeType: "application/json",
+      responseSchema: HOOK_ANALYSIS_SCHEMA,
+      temperature: 0.2
+    }
+  };
 
-    const apiPayload = {
-      contents: [{ role: "user", parts: [{ text: `${systemPrompt}\n\n${userContent}` }] }],
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: HOOK_ANALYSIS_SCHEMA,
-        temperature: 0.2
+  let lastError = null;
+
+  // Try candidate models in order to ensure compatibility with your API key
+  for (const model of CANDIDATE_MODELS) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(apiPayload)
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        lastError = `Status ${response.status}: ${errText}`;
+        continue; // Try next available model
       }
-    };
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(apiPayload)
-    });
+      const data = await response.json();
+      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!rawText) continue;
 
-    if (!response.ok) {
-      const errText = await response.text();
-      let errorMsg = `Gemini API returned status ${response.status}`;
-      try {
-        const parsed = JSON.parse(errText);
-        if (parsed.error && parsed.error.message) errorMsg = parsed.error.message;
-      } catch (e) {}
-      return res.status(response.status).json({ error: errorMsg });
+      const structuredResult = JSON.parse(rawText);
+      const s = structuredResult.structuralScores;
+      structuredResult.totalScore = (s.clarity?.score || 0) +
+                                    (s.audienceRelevance?.score || 0) +
+                                    (s.specificity?.score || 0) +
+                                    (s.curiosity?.score || 0) +
+                                    (s.credibility?.score || 0) +
+                                    (s.productConnection?.score || 0) +
+                                    (s.conciseness?.score || 0);
+
+      return res.json(structuredResult);
+    } catch (e) {
+      lastError = e.message;
     }
-
-    const data = await response.json();
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!rawText) {
-      return res.status(502).json({ error: "AI model returned an empty response." });
-    }
-
-    const structuredResult = JSON.parse(rawText);
-    const s = structuredResult.structuralScores;
-    structuredResult.totalScore = (s.clarity?.score || 0) +
-                                  (s.audienceRelevance?.score || 0) +
-                                  (s.specificity?.score || 0) +
-                                  (s.curiosity?.score || 0) +
-                                  (s.credibility?.score || 0) +
-                                  (s.productConnection?.score || 0) +
-                                  (s.conciseness?.score || 0);
-
-    res.json(structuredResult);
-  } catch (err) {
-    res.status(500).json({ error: `Internal Server Error: ${err.message}` });
   }
+
+  res.status(502).json({ error: `Could not reach an available Gemini model. Details: ${lastError}` });
 });
 
 app.listen(PORT, () => {
