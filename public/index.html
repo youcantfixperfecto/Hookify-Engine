@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Hookify Engine v0.1</title>
+  <style>
+    :root {
+      --bg: #0c0f17; --card-bg: #161b26; --card-border: #262f40;
+      --primary: #4f46e5; --primary-hover: #4338ca; --accent: #06b6d4;
+      --text: #f3f4f6; --text-muted: #9ca3af; --warning: #f59e0b;
+      --danger: #ef4444; --success: #10b981;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding: 16px; min-height: 100vh; }
+    .container { max-width: 900px; margin: 0 auto; }
+    header { text-align: center; margin-bottom: 24px; padding: 12px 0; }
+    header h1 { font-size: 2rem; font-weight: 800; }
+    header h1 span { color: var(--accent); }
+    header p { color: var(--text-muted); font-size: 0.95rem; margin-top: 4px; }
+    .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+    label { display: block; font-weight: 600; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; }
+    textarea, input, select { width: 100%; background: #0e131d; border: 1px solid var(--card-border); border-radius: 8px; color: var(--text); padding: 12px; font-size: 1rem; margin-bottom: 14px; outline: none; }
+    textarea:focus, input:focus, select:focus { border-color: var(--accent); }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+    button { width: 100%; background: var(--primary); color: white; border: none; border-radius: 8px; padding: 14px; font-size: 1rem; font-weight: 700; cursor: pointer; }
+    button:hover { background: var(--primary-hover); }
+    button:disabled { background: #374151; cursor: not-allowed; }
+    .disclaimer-banner { background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 0.82rem; color: #fde68a; }
+    .error-msg { background: rgba(239, 68, 68, 0.15); border: 1px solid var(--danger); color: #fca5a5; padding: 12px; border-radius: 8px; margin-bottom: 16px; }
+    .loading-container { text-align: center; padding: 32px 0; }
+    .spinner { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--accent); border-radius: 50%; width: 36px; height: 36px; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .score-hero { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--card-border); padding-bottom: 16px; margin-bottom: 16px; }
+    .score-badge { font-size: 2.2rem; font-weight: 800; color: var(--accent); }
+    .score-badge span { font-size: 1.2rem; color: var(--text-muted); }
+    .mechanism-tag { display: inline-block; background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 4px 8px; font-size: 0.8rem; font-weight: 600; color: #38bdf8; margin-right: 6px; margin-bottom: 6px; }
+    .quote-box { background: #0b111a; border-left: 3px solid var(--accent); padding: 8px 12px; margin: 6px 0; font-size: 0.88rem; font-style: italic; color: #cbd5e1; }
+    .criterion-item { background: #0f1420; border: 1px solid #20293a; border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+    .crit-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .crit-name { font-weight: 700; text-transform: capitalize; font-size: 0.95rem; }
+    .crit-score { background: #1e293b; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 0.85rem; }
+    .revision-item { background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 14px; margin-bottom: 12px; }
+    .revision-hook { font-weight: 700; color: #38bdf8; font-size: 1.05rem; margin-bottom: 8px; line-height: 1.4; }
+    .verification-warning { background: rgba(239, 68, 68, 0.1); border-left: 3px solid var(--danger); padding: 10px 14px; border-radius: 4px; margin-top: 10px; font-size: 0.85rem; color: #fca5a5; }
+    .verification-warning ul { margin-left: 20px; margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Hookify <span>Engine</span> <small style="font-size: 0.5em; opacity: 0.7;">v0.1</small></h1>
+      <p>Structural Diagnostic & Optimization for Short-Form Video Hooks</p>
+    </header>
+    <div class="disclaimer-banner">
+      <strong>Provisional Diagnostic Notice:</strong> Scores are structural assessments based on direct response principles. High scores do not guarantee views or conversions.
+    </div>
+    <div class="card">
+      <form id="hookForm">
+        <label for="hook">Original Hook *</label>
+        <textarea id="hook" rows="3" placeholder="e.g., You just left the gym, you need protein, but you don't have time..." required></textarea>
+        <div class="grid-2">
+          <div>
+            <label for="product">Product / Niche (Optional)</label>
+            <input type="text" id="product" placeholder="e.g., Ready-to-drink whey protein">
+          </div>
+          <div>
+            <label for="audience">Target Audience (Optional)</label>
+            <input type="text" id="audience" placeholder="e.g., Busy gym-goers">
+          </div>
+        </div>
+        <label for="objective">Hook Objective</label>
+        <select id="objective">
+          <option value="attention">Attention (Maximize 3s retention)</option>
+          <option value="engagement">Engagement (Drive comments & discussion)</option>
+          <option value="clicks">Clicks (Drive profile/link visit)</option>
+          <option value="conversions">Conversions (Qualify ready buyers)</option>
+        </select>
+        <button type="submit" id="submitBtn">Analyze Hook</button>
+      </form>
+    </div>
+    <div id="errorArea"></div>
+    <div id="loadingArea" style="display: none;" class="loading-container">
+      <div class="spinner"></div>
+      <p style="color: var(--text-muted); font-size: 0.9rem;">Deconstructing hook architecture...</p>
+    </div>
+    <div id="resultsArea" style="display: none;"></div>
+  </div>
+  <script>
+    const form = document.getElementById('hookForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const loadingArea = document.getElementById('loadingArea');
+    const errorArea = document.getElementById('errorArea');
+    const resultsArea = document.getElementById('resultsArea');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorArea.innerHTML = '';
+      resultsArea.style.display = 'none';
+      resultsArea.innerHTML = '';
+      const hook = document.getElementById('hook').value;
+      const product = document.getElementById('product').value;
+      const audience = document.getElementById('audience').value;
+      const objective = document.getElementById('objective').value;
+      loadingArea.style.display = 'block';
+      submitBtn.disabled = true;
+
+      try {
+        const response = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hook, product, audience, objective })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to analyze hook.');
+        renderResults(hook, data);
+        resultsArea.style.display = 'block';
+      } catch (err) {
+        errorArea.innerHTML = `<div class="error-msg"><strong>Analysis Error:</strong> ${err.message}</div>`;
+      } finally {
+        loadingArea.style.display = 'none';
+        submitBtn.disabled = false;
+      }
+    });
+
+    function renderResults(originalHook, data) {
+      const { detectedMechanisms, structuralScores, totalScore, strongestAspects, weakestAspects, factualClaimsNeedingVerification, revisedHooks } = data;
+      let mechanismsHtml = (!detectedMechanisms || detectedMechanisms.length === 0)
+        ? '<p style="color: var(--text-muted); font-size: 0.9rem;">No qualifying mechanisms detected.</p>'
+        : detectedMechanisms.map(m => `
+          <div style="margin-bottom: 12px;">
+            <span class="mechanism-tag">${m.mechanism}</span>
+            <div class="quote-box">"${escapeHtml(m.exactQuote)}"</div>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">${escapeHtml(m.explanation)}</p>
+          </div>
+        `).join('');
+
+      const critKeys = [
+        ['clarity', 'Clarity'], ['audienceRelevance', 'Audience Relevance'],
+        ['specificity', 'Specificity'], ['curiosity', 'Curiosity'],
+        ['credibility', 'Credibility'], ['productConnection', 'Product Connection'],
+        ['conciseness', 'Conciseness']
+      ];
+
+      let scoresHtml = critKeys.map(([k, label]) => {
+        const item = structuralScores[k] || { score: 0, explanation: '', evidence: '', improvement: '' };
+        return `
+          <div class="criterion-item">
+            <div class="crit-header">
+              <span class="crit-name">${label}</span>
+              <span class="crit-score">${item.score} / 2</span>
+            </div>
+            <p style="font-size: 0.85rem; color: #cbd5e1; margin-bottom: 4px;"><strong>Diagnosis:</strong> ${escapeHtml(item.explanation)}</p>
+            ${item.evidence ? `<p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px;"><em>Evidence:</em> "${escapeHtml(item.evidence)}"</p>` : ''}
+            <p style="font-size: 0.8rem; color: var(--accent);"><strong>Fix:</strong> ${escapeHtml(item.improvement)}</p>
+          </div>
+        `;
+      }).join('');
+
+      let verificationHtml = (factualClaimsNeedingVerification && factualClaimsNeedingVerification.length > 0) ? `
+        <div class="verification-warning">
+          <strong>Factual Claims Requiring Substantiation:</strong>
+          <ul>${factualClaimsNeedingVerification.map(c => `<li>${escapeHtml(c)}</li>`).join('')}</ul>
+        </div>
+      ` : '';
+
+      let revisionsHtml = revisedHooks.map((rev, idx) => `
+        <div class="revision-item">
+          <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px;">Alternative ${idx + 1}</div>
+          <div class="revision-hook">"${escapeHtml(rev.hook)}"</div>
+          <p style="font-size: 0.85rem; color: #cbd5e1; margin-bottom: 4px;"><strong>Changes:</strong> ${escapeHtml(rev.whatChanged)}</p>
+          <p style="font-size: 0.82rem; color: var(--text-muted);"><strong>Rationale:</strong> ${escapeHtml(rev.rationale)}</p>
+        </div>
+      `).join('');
+
+      resultsArea.innerHTML = `
+        <div class="card">
+          <div class="score-hero">
+            <div>
+              <div style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">Overall Structural Score</div>
+              <div class="score-badge">${totalScore} <span>/ 14</span></div>
+            </div>
+            <div style="text-align: right; font-size: 0.85rem;">
+              <div style="color: var(--success); font-weight: 600;">Strongest: ${(strongestAspects || []).join(', ') || 'None'}</div>
+              <div style="color: var(--warning); font-weight: 600; margin-top: 4px;">Weakest: ${(weakestAspects || []).join(', ') || 'None'}</div>
+            </div>
+          </div>
+          <div style="margin-bottom: 20px;">
+            <label>Original Analyzed Hook</label>
+            <p style="font-style: italic; color: #cbd5e1; background: #0e131d; padding: 10px; border-radius: 6px;">"${escapeHtml(originalHook)}"</p>
+          </div>
+          <div style="margin-bottom: 20px;"><label>Detected Mechanisms</label>${mechanismsHtml}</div>
+          <div style="margin-bottom: 20px;"><label>Structural Breakdown</label>${scoresHtml}</div>
+          ${verificationHtml}
+        </div>
+        <div class="card">
+          <h2 style="font-size: 1.2rem; margin-bottom: 14px;">Optimized Hook Alternatives</h2>
+          ${revisionsHtml}
+        </div>
+      `;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    }
+  </script>
+</body>
+</html>
