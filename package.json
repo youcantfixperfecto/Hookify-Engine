@@ -1,10 +1,11 @@
 {
   "name": "hookify-engine",
-  "version": "0.1.0",
-  "description": "AI-powered short-form video hook analysis engine",
+  "version": "0.2.0",
+  "description": "Clear, consistent AI marketing hook evaluation and generation engine",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node test-suite.js"
   },
   "dependencies": {
     "express": "^4.19.2"
