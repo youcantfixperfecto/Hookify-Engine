@@ -7,6 +7,7 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Schema Definition for Gemini Structured Output
 const HOOK_ANALYSIS_SCHEMA = {
   type: "OBJECT",
   properties: {
@@ -145,31 +146,8 @@ const HOOK_ANALYSIS_SCHEMA = {
   ]
 };
 
-// Auto-detect which model is active on your specific API key
-async function getActiveModel(apiKey) {
-  try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.models && Array.isArray(data.models)) {
-        // Look for flash models that support generateContent
-        const flash = data.models.find(m => 
-          m.supportedGenerationMethods?.includes('generateContent') && 
-          m.name.includes('flash')
-        );
-        if (flash) return flash.name.replace('models/', '');
-
-        const anyModel = data.models.find(m => 
-          m.supportedGenerationMethods?.includes('generateContent')
-        );
-        if (anyModel) return anyModel.name.replace('models/', '');
-      }
-    }
-  } catch (err) {
-    console.error("Auto-detect failed:", err);
-  }
-  return 'gemini-3.5-flash-lite'; // Google's recommended fallback
-}
+// Target Model
+const TARGET_MODEL = 'gemini-3.8-flash-lite';
 
 app.post('/api/analyze', async (req, res) => {
   const { hook, product, audience, objective } = req.body;
@@ -181,7 +159,7 @@ app.post('/api/analyze', async (req, res) => {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return res.status(500).json({
-      error: "GEMINI_API_KEY is missing. Add it to your server environment variables."
+      error: "GEMINI_API_KEY is missing. Please add it to your Render Environment Variables."
     });
   }
 
@@ -221,9 +199,7 @@ Target Objective: "${objective || 'attention'}"`;
   };
 
   try {
-    // Dynamically fetch whichever model is live for your key
-    const model = await getActiveModel(apiKey);
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${TARGET_MODEL}:generateContent?key=${apiKey}`;
 
     const response = await fetch(url, {
       method: "POST",
@@ -233,14 +209,24 @@ Target Objective: "${objective || 'attention'}"`;
 
     if (!response.ok) {
       const errText = await response.text();
-      return res.status(response.status).json({ error: `Model [${model}] error: ${errText}` });
+      let parsedMessage = errText;
+      try {
+        const parsed = JSON.parse(errText);
+        if (parsed.error && parsed.error.message) {
+          parsedMessage = parsed.error.message;
+        }
+      } catch (e) {}
+
+      return res.status(response.status).json({
+        error: `Gemini API Error (${TARGET_MODEL}): ${parsedMessage}`
+      });
     }
 
     const data = await response.json();
     const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!rawText) {
-      return res.status(502).json({ error: "AI model returned an empty response." });
+      return res.status(502).json({ error: "AI model returned an empty response. Please try again." });
     }
 
     const structuredResult = JSON.parse(rawText);
@@ -255,7 +241,7 @@ Target Objective: "${objective || 'attention'}"`;
 
     res.json(structuredResult);
   } catch (err) {
-    res.status(500).json({ error: `Internal Server Error: ${err.message}` });
+    res.status(500).json({ error: `Server Error: ${err.message}` });
   }
 });
 
